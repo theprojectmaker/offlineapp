@@ -1,0 +1,5 @@
+{
+  "name": "offlineapp",
+  "version": "0.1.0",
+  "description": "Save a Claude Artifact or any webpage to a 4-letter offline code for the Offline Artifacts mobile app"
+}

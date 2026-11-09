@@ -1,0 +1,5 @@
+{
+  "name": "offlineapp",
+  "owner": { "name": "theprojectmaker" },
+  "plugins": [{ "name": "offlineapp", "source": "./" }]
+}
