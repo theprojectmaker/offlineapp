@@ -1,4 +1,4 @@
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
 // Cloudflare account's workers.dev subdomain has drifted before (seen
 // northmiddleschool -> scriptly -> greatneck). If this URL starts 404ing,
@@ -27,28 +27,55 @@ function hostnameOf(url: string): string {
   }
 }
 
+const PUBLISHED_ARTIFACT_RE = /\bat (https:\/\/claude\.ai\/(?:code\/)?artifact\/[A-Za-z0-9-]+)/
+
+async function findLastPublishedArtifactUrl($: EngineInterface): Promise<string | undefined> {
+  let messages
+  try {
+    messages = await $.session.messages()
+  } catch {
+    return undefined
+  }
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    for (const use of messages[i].toolUses) {
+      if (use.tool !== 'Artifact' || !use.text) continue
+      const match = use.text.match(PUBLISHED_ARTIFACT_RE)
+      if (match) return match[1]
+    }
+  }
+  return undefined
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'offlineapp',
-      description: 'Save a Claude Artifact or any webpage as a 4-letter code for the Offline Artifacts app',
-      argumentHint: '<URL>',
+      description: 'Save the last artifact (or any URL) as a 4-letter code for the Offline Artifacts app',
+      argumentHint: '[URL]',
     })
 
     return next(e)
   })
 
   on('command.run', { command: 'offlineapp' }, async ($, e) => {
-    const url = e.args.trim()
+    let url = e.args.trim()
+    let autoDetected = false
 
     if (!url) {
-      return {
-        text:
-          'Usage: /offlineapp <URL>\n\n' +
-          'Works best on one of your own claude.ai Artifacts (gets the exact page back). ' +
-          'Also works on any other http(s) page — it saves that page\'s current HTML. ' +
-          'Either way you get a 4-letter code to type into the Offline Artifacts app for fully offline viewing.',
+      const lastArtifact = await findLastPublishedArtifactUrl($)
+      if (!lastArtifact) {
+        return {
+          text:
+            'Usage: /offlineapp <URL>\n\n' +
+            "No URL given, and I couldn't find an artifact published earlier in this conversation to use instead. " +
+            'Works best on one of your own claude.ai Artifacts (gets the exact page back). ' +
+            'Also works on any other http(s) page — it saves that page\'s current HTML. ' +
+            'Either way you get a 4-letter code to type into the Offline Artifacts app for fully offline viewing.',
+        }
       }
+      url = lastArtifact
+      autoDetected = true
     }
 
     const isArtifactUrl = ARTIFACT_URL_RE.test(url)
@@ -141,9 +168,10 @@ export const register: Register = on => {
     const caveat = isArtifactUrl
       ? ''
       : " (this page's own images/styles/scripts hosted elsewhere will still need a connection to load — only self-contained pages are fully offline)"
+    const detectedNote = autoDetected ? ` (used the last artifact published in this conversation: ${url})` : ''
 
     return {
-      text: `Saved "${title}" ${sourceLabel} offline${caveat}. Code: ${code}\n\nType ${code} into the Offline Artifacts app to download it for offline viewing (the code expires in ~${expiresInDays} days).`,
+      text: `Saved "${title}" ${sourceLabel} offline${caveat}${detectedNote}. Code: ${code}\n\nType ${code} into the Offline Artifacts app to download it for offline viewing (the code expires in ~${expiresInDays} days).`,
     }
   })
 }
