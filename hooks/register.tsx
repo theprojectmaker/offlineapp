@@ -19,6 +19,12 @@ function looksLikeRawHtml(text: string): boolean {
   return head.startsWith('<!doctype') || head.startsWith('<html')
 }
 
+// A big artifact, or one read from a session that didn't publish it, comes back as a
+// bracketed summary + a <cowritten-artifact-html> excerpt, with the COMPLETE raw HTML
+// saved to a local file instead (the inline text can be head-only). Read that file
+// rather than relying on the inline text in that case.
+const SAVED_FILE_RE = /full HTML saved to (.+?\.html)/
+
 function hostnameOf(url: string): string {
   try {
     return new URL(url).hostname
@@ -95,7 +101,18 @@ export const register: Register = on => {
         return { text: `Could not read that artifact: ${err instanceof Error ? err.message : String(err)}` }
       }
 
-      html = (readResult as { text?: string }).text ?? ''
+      const resultText = (readResult as { text?: string }).text ?? ''
+      const savedFileMatch = resultText.match(SAVED_FILE_RE)
+
+      if (savedFileMatch) {
+        try {
+          html = (await $.fs.read(savedFileMatch[1].trim())) as string
+        } catch (err) {
+          return { text: `Found the artifact but couldn't read its saved file: ${err instanceof Error ? err.message : String(err)}` }
+        }
+      } else {
+        html = resultText
+      }
 
       if (!looksLikeRawHtml(html)) {
         return {
