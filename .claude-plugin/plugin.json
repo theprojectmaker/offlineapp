@@ -1,5 +1,5 @@
 {
   "name": "offlineapp",
-  "version": "0.1.0",
-  "description": "Save the last artifact you published (or any URL) to a 4-letter offline code for the Offline Artifacts mobile app"
+  "version": "0.2.0",
+  "description": "/offlineapp: pick pages or Claude artifacts from the chat and get 4-letter codes for the Offline Artifacts app"
 }

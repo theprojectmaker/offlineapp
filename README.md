@@ -1,34 +1,21 @@
 # offlineapp
 
-A Claude Code slash command: `/offlineapp <URL>`.
+A Claude Code skill: `/offlineapp`.
 
-Reads one of your own published claude.ai Artifacts (gets the exact page back), or any other
-`http(s)` page (saves its current HTML), uploads it to a small Cloudflare Worker, and hands you
-back a 4-letter code. Type that code into the companion **Offline Artifacts** iOS app to download
-and view it with zero network dependency from then on.
+Run it with nothing after it and Claude lists every web page and Claude artifact from the chat
+with checkboxes. Tick the ones you want; each becomes a 4-letter code for the **Offline Artifacts**
+iOS app, which downloads the page once and keeps it for offline viewing. `/offlineapp <url> ...`
+skips the question.
+
+Web pages have their stylesheets and images folded in so they display offline. Scripts that load
+from elsewhere still need a connection. A Claude artifact must be one you own.
 
 ## Install
 
-At the prompt of a terminal session:
+Copy `skills/offlineapp` into `~/.claude/skills/` and restart Claude Code, or:
 
 ```
 /plugin install offlineapp --marketplace theprojectmaker/offlineapp
 ```
 
-From a shell:
-
-```bash
-claude plugin install offlineapp --marketplace theprojectmaker/offlineapp
-```
-
-In the desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace**
-with `theprojectmaker/offlineapp`, then **Add plugin**.
-
-## Notes
-
-- Works best on your own Claude Artifacts — a shared artifact you don't own only returns an
-  AI-written summary, not the raw page, so there isn't enough to recreate it offline.
-- On any other URL, only that page's own HTML is saved; images/CSS/JS it loads from elsewhere
-  still need a connection unless the page is fully self-contained.
-- Backend: a Cloudflare Worker + KV store (`tests/offline-artifacts-worker` in the main project),
-  codes expire after ~60 days.
+Needs Node 18+. Codes expire after 60 days; pages already downloaded stay on the device.
